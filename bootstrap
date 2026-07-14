@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-REPO="devanchor/da"          # GitHub owner/repo hosting da releases
+REPO="vanya1301/dev-anchor"  # GitHub owner/repo hosting da releases
 BIN_DIR="${HOME}/.local/bin"
 BIN="${BIN_DIR}/da"
 
