@@ -40,8 +40,7 @@ pacman)
 	;;
 esac
 
-cd /work/test/fixtures/smoke
-/work/da pull --yes
+/work/da pull /work/test/fixtures/smoke --yes
 
 if ! command -v tree >/dev/null 2>&1; then
 	echo "FAIL ($label): tree was not installed" >&2

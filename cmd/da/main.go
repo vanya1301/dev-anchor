@@ -10,6 +10,17 @@ import (
 	"github.com/devanchor/da/internal/runner"
 )
 
+// resolveRepoArg turns the required <repo> positional argument into a
+// local filesystem path, cloning it first if it's a remote git URL. da
+// never falls back to the current directory.
+func resolveRepoArg(arg string, r runner.CommandRunner) (string, error) {
+	cacheDir, err := app.DefaultRepoCacheDir()
+	if err != nil {
+		return "", err
+	}
+	return app.ResolveRepo(arg, cacheDir, r)
+}
+
 func main() {
 	r := runner.ExecRunner{}
 
@@ -19,11 +30,20 @@ func main() {
 	root.PersistentFlags().BoolVar(&autoYes, "yes", false, "non-interactive; default all conflict prompts to replace")
 
 	pullCmd := &cobra.Command{
-		Use:   "pull [profile]",
+		Use:   "pull <repo>",
 		Short: "Detect OS, install tools, symlink configs, decrypt secrets",
+		Long: "Detect OS, install tools, symlink configs, decrypt secrets.\n\n" +
+			"<repo> is required: a local path to your DevAnchor repo, or a git\n" +
+			"URL to clone (cached under $XDG_DATA_HOME/devanchor/repos, or\n" +
+			"~/.local/share/devanchor/repos). da never operates on the current\n" +
+			"directory implicitly.",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			wd, _ := os.Getwd()
-			paths := app.DefaultPaths(wd)
+			repoPath, err := resolveRepoArg(args[0], r)
+			if err != nil {
+				return err
+			}
+			paths := app.DefaultPaths(repoPath)
 			rep, err := app.Pull(paths, r, autoYes)
 			if err != nil {
 				return err
@@ -34,11 +54,15 @@ func main() {
 	}
 
 	loginCmd := &cobra.Command{
-		Use:   "login",
+		Use:   "login <repo>",
 		Short: "Decrypt the age key for this session",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			wd, _ := os.Getwd()
-			paths := app.DefaultPaths(wd)
+			repoPath, err := resolveRepoArg(args[0], r)
+			if err != nil {
+				return err
+			}
+			paths := app.DefaultPaths(repoPath)
 			pw, err := app.ReadPassword("DevAnchor password: ")
 			if err != nil {
 				return err
@@ -55,11 +79,15 @@ func main() {
 	}
 
 	keygenCmd := &cobra.Command{
-		Use:   "keygen",
+		Use:   "keygen <repo>",
 		Short: "Generate and password-encrypt an age keypair",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			wd, _ := os.Getwd()
-			paths := app.DefaultPaths(wd)
+			repoPath, err := resolveRepoArg(args[0], r)
+			if err != nil {
+				return err
+			}
+			paths := app.DefaultPaths(repoPath)
 			pw, err := app.ReadPassword("New DevAnchor password: ")
 			if err != nil {
 				return err
@@ -73,14 +101,18 @@ func main() {
 	}
 
 	anchorCmd := &cobra.Command{
-		Use:   "anchor [path]",
+		Use:   "anchor <repo> [config-path]",
 		Short: "Capture local tools/configs/secrets back into the repo",
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			wd, _ := os.Getwd()
-			paths := app.DefaultPaths(wd)
+			repoPath, err := resolveRepoArg(args[0], r)
+			if err != nil {
+				return err
+			}
+			paths := app.DefaultPaths(repoPath)
 			newConfig := ""
-			if len(args) > 0 {
-				newConfig = args[0]
+			if len(args) > 1 {
+				newConfig = args[1]
 			}
 			rep, err := app.RunAnchor(paths, r, nil, newConfig)
 			if err != nil {

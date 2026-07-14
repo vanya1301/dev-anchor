@@ -19,33 +19,36 @@ secrets.
 
 ## Install
 
-> ⚠️ **This repo is the `da` tool itself, not your dotfiles.** `da pull`
-> operates on whatever directory you run it from, treating it as your
-> personal DevAnchor repo. Don't run the bootstrap one-liner from inside
-> *this* checkout expecting it to touch your real home directory
-> meaningfully — `tools.toml`/`symlinks.toml`/`.sops.yaml` at the repo root
-> are **templates**. To actually use DevAnchor:
+> ⚠️ **This repo is the `da` tool itself, not your dotfiles.**
+> `tools.toml`/`symlinks.toml`/`.sops.yaml` at the repo root are
+> **templates**. To actually use DevAnchor:
 >
 > 1. Fork this repo (or create your own repo with the same layout).
 > 2. Fill in `tools.toml`, `symlinks.toml`, and `configs/` with your own
 >    tools and dotfiles.
-> 3. Clone *your* repo on a machine and run `da pull` from inside it.
+> 3. Run `da pull <your-repo>` — a git URL or a local path.
+
+`da` **requires an explicit `<repo>` argument on every command** (`pull`,
+`login`, `keygen`, `anchor`). It never falls back to the current directory
+— you always say exactly which DevAnchor repo you mean.
 
 ```sh
-git clone git@github.com:<you>/<your-dotfiles-repo>.git
-cd <your-dotfiles-repo>
-curl -fsSL https://raw.githubusercontent.com/vanya1301/dev-anchor/develop/bootstrap | sh
+curl -fsSL https://raw.githubusercontent.com/vanya1301/dev-anchor/develop/bootstrap | sh -s -- git@github.com:<you>/<your-dotfiles-repo>.git
 ```
 
 This detects your OS/arch, downloads the matching `da` binary into
-`~/.local/bin/da`, and runs `da pull` **in the current directory** — so run
-it from inside your own DevAnchor repo, not an arbitrary directory (and
-never from `$HOME` directly, unless `$HOME` *is* your DevAnchor repo).
+`~/.local/bin/da`, clones `<your-dotfiles-repo>` into
+`~/.local/share/devanchor/repos/` (or updates it if already cloned), and
+runs `da pull` against that clone. A local path works too:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/vanya1301/dev-anchor/develop/bootstrap | sh -s -- ~/dotfiles
+```
 
 Safety note: if `da pull` hits a symlink conflict and stdin isn't an
-interactive terminal (e.g. piped through `sh`), it now **leaves the
-existing file untouched** and tells you to re-run interactively or pass
-`--yes`. It never guesses "replace" on your behalf.
+interactive terminal (e.g. piped through `sh`), it **leaves the existing
+file untouched** and tells you to re-run interactively or pass `--yes`. It
+never guesses "replace" on your behalf.
 
 Or build from source:
 
@@ -53,7 +56,7 @@ Or build from source:
 git clone git@github.com:devanchor/da.git   # or your own dev-anchor fork
 cd da
 go build -o da ./cmd/da
-./da pull   # run from inside YOUR DevAnchor repo, not this one
+./da pull git@github.com:<you>/<your-dotfiles-repo>.git   # or a local path
 ```
 
 Or grab a prebuilt binary from a recent CI run (see [CI](#ci) below).
@@ -62,10 +65,16 @@ Or grab a prebuilt binary from a recent CI run (see [CI](#ci) below).
 
 | Command | Description |
 |---|---|
-| `da pull [profile]` | Detect OS, install missing tools from `tools.toml`, symlink configs from `symlinks.toml`, decrypt secrets if `.sops.yaml` is present. |
-| `da anchor [path]` | Reverse-sync: capture newly installed tools and (optionally) adopt a new config file at `path` into `configs/`, re-encrypting secrets. |
-| `da login` | Decrypt the `age` key for this shell session (prompts for password, or reads `$DA_TOKEN`). |
-| `da keygen` | Generate a new `age` keypair, password-encrypt the private key, and write `age.pub` + `age.key.enc`. |
+| `da pull <repo>` | Detect OS, install missing tools from `tools.toml`, symlink configs from `symlinks.toml`, decrypt secrets if `.sops.yaml` is present. |
+| `da anchor <repo> [config-path]` | Reverse-sync: capture newly installed tools and (optionally) adopt a new config file at `config-path` into `configs/`, re-encrypting secrets. |
+| `da login <repo>` | Decrypt the `age` key for this shell session (prompts for password, or reads `$DA_TOKEN`). |
+| `da keygen <repo>` | Generate a new `age` keypair, password-encrypt the private key, and write `age.pub` + `age.key.enc`. |
+
+`<repo>` is either a local path to your DevAnchor repo, or a git URL — `da`
+clones it (or fast-forward-pulls an existing clone) into
+`$XDG_DATA_HOME/devanchor/repos` (default `~/.local/share/devanchor/repos`)
+before operating on it. **There is no implicit default** — every command
+requires it.
 
 Global flag: `--yes` — non-interactive, defaults every symlink conflict
 prompt to "replace" instead of prompting.

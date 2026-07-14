@@ -1,9 +1,22 @@
 #!/bin/sh
 set -eu
 
-REPO="vanya1301/dev-anchor"  # GitHub owner/repo hosting da releases
+# GitHub owner/repo hosting `da` releases (the tool itself, not your
+# dotfiles).
+DA_RELEASES_REPO="vanya1301/dev-anchor"
 BIN_DIR="${HOME}/.local/bin"
 BIN="${BIN_DIR}/da"
+
+if [ "$#" -lt 1 ]; then
+	echo "Usage: bootstrap <repo> [--yes]" >&2
+	echo "  <repo> is your DevAnchor repo: a git URL or a local path." >&2
+	echo "  da never operates on the current directory implicitly." >&2
+	echo >&2
+	echo "  Examples:" >&2
+	echo "    bootstrap git@github.com:you/dotfiles.git" >&2
+	echo "    bootstrap ~/dotfiles" >&2
+	exit 1
+fi
 
 if ! command -v git >/dev/null 2>&1; then
 	echo "git is required. Install it: https://git-scm.com/downloads" >&2
@@ -25,7 +38,7 @@ esac
 
 mkdir -p "$BIN_DIR"
 asset="da_${os}_${arch}"
-url="https://github.com/${REPO}/releases/latest/download/${asset}"
+url="https://github.com/${DA_RELEASES_REPO}/releases/latest/download/${asset}"
 
 echo "Downloading ${asset} ..."
 if command -v curl >/dev/null 2>&1; then
