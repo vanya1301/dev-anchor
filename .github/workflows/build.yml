@@ -68,5 +68,4 @@ jobs:
           gh release create latest dist/da_* \
             --title "latest (develop)" \
             --notes "Automated build from develop @ ${{ github.sha }}" \
-            --prerelease \
             --target "${{ github.sha }}"
