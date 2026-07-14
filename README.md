@@ -19,20 +19,41 @@ secrets.
 
 ## Install
 
+> ⚠️ **This repo is the `da` tool itself, not your dotfiles.** `da pull`
+> operates on whatever directory you run it from, treating it as your
+> personal DevAnchor repo. Don't run the bootstrap one-liner from inside
+> *this* checkout expecting it to touch your real home directory
+> meaningfully — `tools.toml`/`symlinks.toml`/`.sops.yaml` at the repo root
+> are **templates**. To actually use DevAnchor:
+>
+> 1. Fork this repo (or create your own repo with the same layout).
+> 2. Fill in `tools.toml`, `symlinks.toml`, and `configs/` with your own
+>    tools and dotfiles.
+> 3. Clone *your* repo on a machine and run `da pull` from inside it.
+
 ```sh
+git clone git@github.com:<you>/<your-dotfiles-repo>.git
+cd <your-dotfiles-repo>
 curl -fsSL https://raw.githubusercontent.com/vanya1301/dev-anchor/develop/bootstrap | sh
 ```
 
 This detects your OS/arch, downloads the matching `da` binary into
-`~/.local/bin/da`, and runs `da pull`.
+`~/.local/bin/da`, and runs `da pull` **in the current directory** — so run
+it from inside your own DevAnchor repo, not an arbitrary directory (and
+never from `$HOME` directly, unless `$HOME` *is* your DevAnchor repo).
+
+Safety note: if `da pull` hits a symlink conflict and stdin isn't an
+interactive terminal (e.g. piped through `sh`), it now **leaves the
+existing file untouched** and tells you to re-run interactively or pass
+`--yes`. It never guesses "replace" on your behalf.
 
 Or build from source:
 
 ```sh
-git clone git@github.com:vanya1301/dev-anchor.git
-cd dev-anchor
+git clone git@github.com:devanchor/da.git   # or your own dev-anchor fork
+cd da
 go build -o da ./cmd/da
-./da pull
+./da pull   # run from inside YOUR DevAnchor repo, not this one
 ```
 
 Or grab a prebuilt binary from a recent CI run (see [CI](#ci) below).
@@ -100,7 +121,9 @@ b) copy into configs/, keep file
 c) copy into configs/, replace with symlink  [recommended]
 ```
 
-`--yes` picks (c) automatically.
+`--yes` picks (c) automatically. If stdin isn't a terminal (e.g. run via a
+piped script) and `--yes` isn't set, `da` picks (a) automatically — it
+never replaces a real file without either your explicit input or `--yes`.
 
 ### Secrets
 
