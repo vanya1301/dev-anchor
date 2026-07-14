@@ -2,9 +2,10 @@
 /da
 /dist/
 
-# Session + runtime state
-/.da/
-/.backup/
+# Session + runtime state (anywhere a `da pull` was run, including test
+# fixtures used by CI smoke tests)
+.da/
+.backup/
 
 # Machine-specific overrides (loaded but never committed)
 /local/

@@ -1,0 +1,5 @@
+# Fixture for CI smoke testing (see test/smoke.sh).
+
+[[link]]
+source = "testrc"
+target = "~/.testrc"

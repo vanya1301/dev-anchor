@@ -1,0 +1,13 @@
+# Fixture for CI smoke testing (see .github/workflows/build.yml `smoke` job
+# and test/smoke.sh). `tree` is small, fast to install, and available under
+# the same binary/package name on apt, dnf, and pacman.
+
+[[tool]]
+name = "tree"
+manager = "apt"
+package = "tree"
+binary = "tree"
+
+[tool.overrides]
+dnf = "tree"
+pacman = "tree"

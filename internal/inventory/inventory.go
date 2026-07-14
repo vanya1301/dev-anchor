@@ -60,8 +60,17 @@ func Sync(inv Inventory, info platform.Info, r runner.CommandRunner, look LookPa
 			skipped = append(skipped, tool.Name)
 			continue
 		}
-		pkg := tool.ResolvedPackage(tool.Manager)
-		if e := pkgmgr.InstallVia(tool.Manager, pkg, r); e != nil {
+		// Prefer the detected platform's package manager whenever the tool
+		// declares an override for it (lets one entry ship per-distro
+		// package names). Otherwise fall back to the tool's declared
+		// primary manager — used for OS-agnostic installers (uv, cargo,
+		// npm, go) or single-platform tools with no override needed.
+		installer := tool.Manager
+		if _, ok := tool.Overrides[string(info.Manager)]; ok {
+			installer = string(info.Manager)
+		}
+		pkg := tool.ResolvedPackage(string(info.Manager))
+		if e := pkgmgr.InstallVia(installer, pkg, r); e != nil {
 			return installed, skipped, e
 		}
 		installed = append(installed, tool.Name)

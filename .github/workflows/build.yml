@@ -8,12 +8,12 @@ permissions:
   contents: write
 
 jobs:
-  test:
+  unit-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - name: Run tests in Docker (go vet + go test ./...)
+      - name: Run unit tests in Docker (go vet + go test ./...)
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -23,7 +23,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   build:
-    needs: test
+    needs: unit-tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -55,8 +55,37 @@ jobs:
           path: dist/da_${{ matrix.goos }}_${{ matrix.goarch }}
           retention-days: 30
 
-  release:
+  smoke:
     needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ubuntu:24.04
+            manager: apt
+          - image: debian:12
+            manager: apt
+          - image: fedora:41
+            manager: dnf
+          - image: archlinux:latest
+            manager: pacman
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: da_linux_amd64
+          path: dist
+      - run: |
+          chmod +x dist/da_linux_amd64
+          cp dist/da_linux_amd64 da
+      - name: da pull in a fresh ${{ matrix.image }} container
+        run: |
+          docker run --rm -v "${{ github.workspace }}":/work -w /work "${{ matrix.image }}" \
+            sh /work/test/smoke.sh "${{ matrix.manager }}" "${{ matrix.image }}"
+
+  release:
+    needs: [build, smoke]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

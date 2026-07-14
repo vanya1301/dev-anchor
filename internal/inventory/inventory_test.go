@@ -76,6 +76,48 @@ func TestSyncInstallsMissingOnly(t *testing.T) {
 	}
 }
 
+// A tool declared with a primary "manager" (used on the platform it was
+// authored for, e.g. brew on macOS) must install via the *detected
+// platform's* package manager when an override exists for it — never via
+// the literal `manager` field on a platform where that manager doesn't
+// even exist.
+const overrideSample = `
+[[tool]]
+name = "ripgrep"
+manager = "brew"
+package = "ripgrep"
+binary = "rg"
+
+[tool.overrides]
+apt = "ripgrep"
+`
+
+func TestSyncUsesPlatformManagerWhenOverridePresent(t *testing.T) {
+	inv, err := Parse([]byte(overrideSample))
+	if err != nil {
+		t.Fatal(err)
+	}
+	info := platform.Info{OS: platform.Linux, Manager: platform.Apt}
+	m := &runner.MockRunner{}
+	look := func(string) (string, error) { return "", errNotFound }
+
+	installed, _, err := Sync(inv, info, m, look)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(installed) != 1 {
+		t.Fatalf("installed=%v", installed)
+	}
+	if len(m.Calls) != 1 {
+		t.Fatalf("calls=%+v", m.Calls)
+	}
+	// must run apt-get via sudo, NOT `brew install ripgrep` (brew doesn't
+	// exist on this platform).
+	if m.Calls[0].Name != "sudo" || m.Calls[0].Args[0] != "apt-get" {
+		t.Fatalf("expected apt-get install, got %+v", m.Calls[0])
+	}
+}
+
 func TestStateRoundTrip(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "state.json")
 	s := State{Tools: map[string]ToolState{"ruff": {Version: "0.5.0", Manager: "uv"}}}
