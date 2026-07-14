@@ -80,5 +80,19 @@ func Pull(paths Paths, r runner.CommandRunner, autoYes bool) (reporter.Report, e
 		}
 	}
 
+	// secrets (best-effort; skipped if no .sops.yaml or no login)
+	if _, statErr := os.Stat(paths.SopsFile); statErr == nil {
+		pw, perr := ReadPassword("DevAnchor password: ")
+		if perr == nil && pw != "" {
+			if sess, tmp, lerr := RunLogin(paths, r, pw); lerr == nil {
+				defer sess.Close()
+				defer os.RemoveAll(tmp)
+				if dec, derr := DecryptSecrets(paths, sess, tmp); derr == nil {
+					rep.DecryptedFiles = dec
+				}
+			}
+		}
+	}
+
 	return rep, nil
 }
