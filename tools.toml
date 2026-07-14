@@ -1,0 +1,22 @@
+# DevAnchor tool inventory. Each [[tool]] is installed if `binary` is missing.
+# github-release source is not auto-installed in the MVP.
+
+[[tool]]
+name = "ripgrep"
+manager = "brew"
+package = "ripgrep"
+version = "latest"
+binary = "rg"
+platform = ["macos", "linux"]
+
+[tool.overrides]
+apt = "ripgrep"
+dnf = "ripgrep"
+pacman = "ripgrep"
+
+[[tool]]
+name = "ruff"
+manager = "uv"
+package = "ruff"
+version = "latest"
+binary = "ruff"

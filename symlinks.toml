@@ -1,0 +1,5 @@
+# Map repo configs/ files to their target locations. ~ expands to $HOME.
+
+[[link]]
+source = "zsh/.zshrc"
+target = "~/.zshrc"

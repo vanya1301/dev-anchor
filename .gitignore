@@ -1,0 +1,14 @@
+# Build output
+/da
+/dist/
+
+# Session + runtime state
+/.da/
+/.backup/
+
+# Machine-specific overrides (loaded but never committed)
+/local/
+
+# Never commit the plaintext or recovered age key
+age.key
+**/age.key

@@ -1,0 +1,5 @@
+# Maps which files are encrypted and which age key decrypts them.
+# Replace age1... with the public key printed by `da keygen`.
+creation_rules:
+  - path_regex: secrets/.*\.yaml$
+    age: age1replace_with_your_public_key

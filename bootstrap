@@ -1,0 +1,42 @@
+#!/bin/sh
+set -eu
+
+REPO="devanchor/da"          # GitHub owner/repo hosting da releases
+BIN_DIR="${HOME}/.local/bin"
+BIN="${BIN_DIR}/da"
+
+if ! command -v git >/dev/null 2>&1; then
+	echo "git is required. Install it: https://git-scm.com/downloads" >&2
+	exit 1
+fi
+
+os="$(uname -s)"
+arch="$(uname -m)"
+case "$os" in
+	Darwin) os="darwin" ;;
+	Linux)  os="linux" ;;
+	*) echo "Unsupported OS: $os" >&2; exit 1 ;;
+esac
+case "$arch" in
+	x86_64|amd64) arch="amd64" ;;
+	arm64|aarch64) arch="arm64" ;;
+	*) echo "Unsupported arch: $arch" >&2; exit 1 ;;
+esac
+
+mkdir -p "$BIN_DIR"
+asset="da_${os}_${arch}"
+url="https://github.com/${REPO}/releases/latest/download/${asset}"
+
+echo "Downloading ${asset} ..."
+if command -v curl >/dev/null 2>&1; then
+	curl -fsSL "$url" -o "$BIN"
+elif command -v wget >/dev/null 2>&1; then
+	wget -qO "$BIN" "$url"
+else
+	echo "Need curl or wget to download da." >&2
+	exit 1
+fi
+chmod +x "$BIN"
+
+echo "Running da pull ..."
+exec "$BIN" pull "$@"
