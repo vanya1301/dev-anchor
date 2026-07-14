@@ -27,8 +27,9 @@ machine-specific overrides, and post-install hooks.
 ## MVP Scope
 
 **In:** bootstrap delivery, platform detection, `tools.toml` install, symlink
-strategy with interactive conflict resolution, `da login`/`da keygen`/`da anchor`
-secrets lifecycle, "what changed" reporting.
+strategy with interactive conflict resolution, `da login`/`da keygen` secrets
+lifecycle, **`da anchor` reverse-sync (capture installed tools + new configs +
+encrypt secrets)**, "what changed" reporting.
 
 **Out (deferred to later plans):** drift detection command (`da check`/`status`),
 rollback (`da rollback`), selective profiles, machine-specific overrides
@@ -47,7 +48,7 @@ dev-anchor/
   cmd/da/main.go            # CLI entrypoint (cobra)
   internal/
     platform/               # OS + distro + arch + WSL detection → PkgManager selection
-    pkgmgr/                 # installers: brew/apt/dnf/pacman + uv/cargo/npm/go/github-release
+    pkgmgr/                 # installers + list-installed queries: brew/apt/dnf/pacman + uv/cargo/npm/go/github-release
     inventory/              # tools.toml parse + install orchestration + state store
     symlink/                # symlink create, safety diff/warn, conflict prompts, manifest
     secrets/                # keygen/login/anchor/decrypt via sops+age, session temp key
@@ -151,16 +152,54 @@ directly.
 3. `da` sets `SOPS_AGE_KEY_FILE` for its own `sops` subprocess calls.
 4. On process exit (`defer`) the temp key is shredded and removed.
 
-### `da anchor`
-
-Encrypts flagged files by running `sops -e` internally per `.sops.yaml`. The user
-never types `sops`.
-
 ### `da pull` (decrypt step)
 
 For each encrypted file in `.sops.yaml`, `da` runs `sops -d` → writes plaintext to
 a runtime location (`0600`) → symlinks into the target. Plaintext is never written
 back into the repo.
+
+## Reverse-Sync: `da anchor`
+
+`da anchor` captures changes a user made on the local machine back into the
+DevAnchor repo, so they can be committed and applied elsewhere. It handles three
+categories:
+
+### 1. Newly installed tools
+
+For the active package manager, `da` lists user-installed packages and diffs
+against `tools.toml`:
+
+| Manager | List command |
+|---------|--------------|
+| brew | `brew leaves` |
+| apt | `apt-mark showmanual` |
+| dnf | `dnf repoquery --userinstalled --qf '%{name}'` |
+| pacman | `pacman -Qe` |
+| cargo | `cargo install --list` |
+| npm | `npm ls -g --depth=0 --json` |
+| uv | `uv tool list` |
+
+Packages present locally but absent from `tools.toml` are shown; the user
+interactively selects which to add. `da` writes new `[[tool]]` entries with the
+resolved `manager`, `package`, `binary`, and pinned `version`.
+
+### 2. Config changes
+
+- **Edited existing configs** — files symlinked into `configs/` are edited in
+  place, so the change is *already* in the repo. No `anchor` action needed;
+  `git status` shows the diff.
+- **New/unlinked configs** — the user points `da anchor <path>` at a file. `da`
+  runs the same adopt flow as symlink conflict resolution choice (c): back up the
+  original, copy content into `configs/`, add a `symlinks.toml` entry, and replace
+  the file with a symlink.
+
+### 3. Secrets
+
+`da anchor` encrypts files flagged in `.sops.yaml` by running `sops -e`
+internally. The user never types `sops`.
+
+After `da anchor`, the user reviews with `git diff` and runs
+`git commit`/`push` (git actions stay with the user).
 
 ## Bootstrap Phases
 
@@ -200,6 +239,8 @@ back into the repo.
 - Symlink tests exercise all four target states (missing, repo-symlink, real-file
   ×3 choices) against a temp directory.
 - Secrets tests mock `age`/`sops` invocations and assert temp-key cleanup.
+- Anchor tests mock package-manager list commands and assert correct `tools.toml`
+  diff/additions and the new-config adopt flow.
 - A containerized smoke test running `bootstrap` per distro is planned for CI
   (out of MVP code scope, tracked for a later plan).
 
